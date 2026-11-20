@@ -1,0 +1,34 @@
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Large local binaries (exceeds Vercel 250MB limit & Windows-only)
+ffmpeg/
+
+# Version control & IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Byte-compiled / Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Documentation & Offline Scripts (not needed in web runtime)
+docs/
+scripts/
+scratch/
+
+# Temporary audio files
+static/tts/*.mp3
+!static/tts/.gitkeep
+*.webm
+*.wav
+*.tmp

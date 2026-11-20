@@ -1,0 +1,46 @@
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Temporary audio files generated during STT/TTS runs
+static/tts/*.mp3
+!static/tts/.gitkeep
+*.webm
+*.wav
+*.tmp
+
+# Scratch folder
+scratch/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Operating System files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+.vercel
+
+ffmpeg/
+

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analisis Sentimen Ucapan Bahasa Indonesia - Prototipe Tugas Akhir</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <a href="/" class="back-link">&larr; Beranda</a>
+        <h1>Analisis Sentimen Ucapan Bahasa Indonesia</h1>
+      </div>
+      <div class="status-container">
+        <span class="status-label">Status Sistem:</span>
+        <span id="systemStatus" class="status-badge status-standby">Siap Merekam</span>
+      </div>
+    </header>
+
+    <!-- Subheader Info -->
+    <div class="header-caption">
+      Prototipe Tugas Akhir: Analisis sentimen dari ucapan Bahasa Indonesia serta evaluasi pengaruh kesalahan Speech-to-Text terhadap hasil klasifikasi.
+    </div>
+
+    <!-- Voice Control Section -->
+    <section class="control-section">
+      <div class="recording-controls">
+        <div id="wave" class="blob-container">
+          <div class="blob"></div>
+          <div class="blob"></div>
+          <div class="blob"></div>
+        </div>
+        <div class="button-group">
+          <button id="recordBtn" class="btn-primary">
+            <span class="icon">🎙</span> <span id="recordBtnText">Mulai Bicara</span>
+          </button>
+          <button id="stopBtn" class="btn-secondary" style="display: none;">
+            <span class="icon">⏹</span> Hentikan Rekaman
+          </button>
+        </div>
+        <div id="recordingFeedback" class="recording-feedback">Tekan "Mulai Bicara" atau sebutkan wake word <em>"Halo Neo"</em> untuk memulai rekaman.</div>
+      </div>
+    </section>
+
+    <!-- Main Dual-Pane Section -->
+    <main class="dual-pane-grid">
+      <!-- Left Pane: STT Result -->
+      <section class="card pane-card">
+        <div class="card-header">
+          <h2>1. Hasil Pengenalan Suara (STT)</h2>
+          <span class="pane-badge">Output Pipeline</span>
+        </div>
+        <div class="card-body">
+          <div class="field-group">
+            <label>Transkrip Mentah (Google STT):</label>
+            <div id="sttRawText" class="text-box text-box-muted">Belum ada audio yang direkam.</div>
+          </div>
+
+          <div class="field-group">
+            <label>Teks Normalisasi & Koreksi Otomatis:</label>
+            <div id="sttNormalizedText" class="text-box">Belum ada audio yang diproses.</div>
+          </div>
+
+          <div class="metric-row">
+            <div class="metric-item">
+              <span class="metric-title">Prediksi Sentimen</span>
+              <span id="sttSentiment" class="badge-sentiment badge-empty">-</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-title">Skor Model</span>
+              <span id="sttModelScore" class="metric-value">-</span>
+              <small class="metric-subtext">Skor model (tidak terkalibrasi)</small>
+            </div>
+          </div>
+
+          <div class="stats-panel">
+            <div class="stat-cell">
+              <span class="stat-label">Durasi Audio</span>
+              <span id="sttDuration" class="stat-val">-</span>
+            </div>
+            <div class="stat-cell">
+              <span class="stat-label">Latensi STT</span>
+              <span id="sttExecTime" class="stat-val">-</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Pane: User Correction & Impact Evaluation -->
+      <section class="card pane-card">
+        <div class="card-header">
+          <h2>2. Evaluasi Koreksi Teks Pengguna</h2>
+          <span class="pane-badge pane-badge-accent">Uji Sensitivitas</span>
+        </div>
+        <div class="card-body">
+          <p class="pane-instruction">
+            Bila terdapat kata yang salah dikenali oleh STT, perbaiki transkrip di bawah untuk menguji apakah kesalahan STT mempengaruhi hasil klasifikasi sentimen:
+          </p>
+
+          <div class="field-group">
+            <label for="userCorrectionInput">Teks Koreksi Pengguna:</label>
+            <textarea id="userCorrectionInput" class="form-textarea" rows="3" placeholder="Teks transkrip otomatis akan muncul di sini. Anda dapat mengedit kata yang salah dengar..."></textarea>
+          </div>
+
+          <div class="action-bar">
+            <button id="reanalyzeBtn" class="btn-accent" disabled>
+              <span>🔍</span> Analisis Ulang Teks Koreksi
+            </button>
+          </div>
+
+          <!-- Evaluation Results -->
+          <div id="reanalysisResult" class="evaluation-panel" style="display: none;">
+            <div class="eval-divider"></div>
+            <h3>Hasil Evaluasi Koreksi:</h3>
+
+            <div class="metric-row">
+              <div class="metric-item">
+                <span class="metric-title">Sentimen Baru</span>
+                <span id="corrSentiment" class="badge-sentiment badge-empty">-</span>
+              </div>
+              <div class="metric-item">
+                <span class="metric-title">Skor Model Baru</span>
+                <span id="corrModelScore" class="metric-value">-</span>
+                <small class="metric-subtext">Skor model (tidak terkalibrasi)</small>
+              </div>
+            </div>
+
+            <div class="eval-detail-box">
+              <div class="detail-row">
+                <span class="detail-label">Jarak Edit Kata dari Koreksi:</span>
+                <span id="corrEditDistance" class="detail-val">0 kata (0%)</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Pengaruh terhadap Sentimen:</span>
+                <span id="sentimentShiftStatus" class="detail-val">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- History & Database Section (Neon DB) -->
+    <section class="card history-section" id="historySection">
+      <div class="card-header history-header">
+        <div class="history-title-group">
+          <h2>3. Riwayat Analisis Ucapan (Neon DB)</h2>
+          <span class="db-badge"><span class="db-dot"></span> PostgreSQL Connected</span>
+        </div>
+        <div class="history-actions">
+          <button id="refreshHistoryBtn" class="btn-tool" title="Muat Ulang Riwayat">
+            <span>🔄</span> Segarkan
+          </button>
+          <button id="exportExcelBtn" class="btn-tool btn-excel" title="Ekspor data ke file Excel (.xlsx)">
+            <span>📊</span> Ekspor Excel
+          </button>
+          <button id="exportPdfBtn" class="btn-tool btn-pdf" title="Ekspor data ke laporan PDF">
+            <span>📄</span> Ekspor PDF
+          </button>
+          <button id="clearHistoryBtn" class="btn-tool btn-danger-outline" title="Bersihkan seluruh riwayat">
+            <span>🗑️</span> Hapus Semua
+          </button>
+        </div>
+      </div>
+      <div class="card-body history-body">
+        <!-- Filter & Search Bar -->
+        <div class="history-toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="historySearchInput" placeholder="Cari transkrip atau kata..." autocomplete="off">
+          </div>
+          <div class="filter-group">
+            <label for="sentimentFilter">Filter Sentimen:</label>
+            <select id="sentimentFilter" class="form-select">
+              <option value="">Semua Sentimen</option>
+              <option value="positif">Positif</option>
+              <option value="negatif">Negatif</option>
+              <option value="netral">Netral</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- History Summary Stats -->
+        <div class="history-stats">
+          <div class="hstat-chip">
+            <span class="hstat-label">Total Data:</span>
+            <span id="hstatTotal" class="hstat-count">0</span>
+          </div>
+          <div class="hstat-chip hstat-pos">
+            <span class="hstat-label">Positif:</span>
+            <span id="hstatPos" class="hstat-count">0</span>
+          </div>
+          <div class="hstat-chip hstat-neg">
+            <span class="hstat-label">Negatif:</span>
+            <span id="hstatNeg" class="hstat-count">0</span>
+          </div>
+          <div class="hstat-chip hstat-neu">
+            <span class="hstat-label">Netral:</span>
+            <span id="hstatNeu" class="hstat-count">0</span>
+          </div>
+        </div>
+
+        <!-- History Table Container -->
+        <div class="table-responsive">
+          <table class="history-table" id="historyTable">
+            <thead>
+              <tr>
+                <th style="width: 45px;">No</th>
+                <th style="width: 140px;">Waktu</th>
+                <th>Transkrip Mentah (STT)</th>
+                <th>Teks Normalisasi & Koreksi</th>
+                <th style="width: 110px;">Sentimen</th>
+                <th style="width: 80px;">Skor</th>
+                <th style="width: 75px;">Durasi</th>
+                <th style="width: 75px;">Latensi</th>
+                <th style="width: 65px; text-align: center;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody">
+              <tr>
+                <td colspan="9" class="table-empty">Memuat data riwayat dari Neon DB...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hidden audio element for TTS playback -->
+    <audio id="ttsPlayer" controls style="display:none"></audio>
+
+    <!-- Privacy & Academic Footer -->
+    <footer class="app-footer">
+      <p class="privacy-notice">
+        🔒 <strong>Privasi & Pengolahan Data:</strong> Audio dan transkrip hanya diproses secara sementara di memori selama sesi berlangsung dan tidak disimpan secara permanen pada server.
+      </p>
+      <p class="academic-note">
+        Evaluasi pengaruh kesalahan STT dihitung melalui jarak edit kata dari koreksi manual pengguna terhadap transkrip otomatis.
+      </p>
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/record.js') }}?v=2.0"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      // Play opening greeting on page load (user interaction policy safe)
+      fetch("/tts_opening")
+        .then(response => response.json())
+        .then(data => {
+          if (data.filename) {
+            const audio = new Audio("/static/" + data.filename);
+            audio.play().catch(e => {
+              console.log("Autoplay ditahan browser sampai pengguna berinteraksi.");
+            });
+          }
+        })
+        .catch(err => console.log("Info opening TTS:", err));
+    });
+  </script>
+</body>
+</html>
